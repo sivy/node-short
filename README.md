@@ -6,6 +6,11 @@ We track hits (total hitcount as well as referrer and hit time) for each short U
 
 This is a learning project, but I think that eventually it will be something you can add to an existing service and have it be useful.
 
+## Dependencies
+
+* expressjs (and connect)
+* node-mongodb-native
+
 ## TODO:
 
 * formalize the API
