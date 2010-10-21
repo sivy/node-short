@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+<h1>{{ title }}</h1>
+
+{% block content %}
+
+{%if urls %}
+<ul>
+{% for url in urls %}
+  <li><a href="/{{url.shorturl}}">{{ url.url }}</a> | <a
+  href="/{{url.shorturl}}.html">data</a> | <a href="/{{url.shorturl}}.json">json</a>
+      {% if url.stats.hitcount %} ({{ url.stats.hitcount }}){% endif %}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% endblock %}

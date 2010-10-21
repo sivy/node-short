@@ -1,0 +1,14 @@
+<h3>{{ url.shorturl }}: {{url.url}}</h3>
+
+<table id="hits">
+  <tr>
+  <th>Referer</th>
+  <th>Time</th>
+  </tr>
+  {% for hit in url.stats.hits %}
+  <tr>
+    <td>{{ hit.referer }}</td>
+    <td>{{ hit.created_on }}</td>
+  </tr>
+ {% endfor %}
+</table>

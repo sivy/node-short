@@ -1,0 +1,20 @@
+{% extends "base.html" %}  
+
+{% block content %}
+<h3>http://localhost/{{ url.shorturl }}: {{url.url}}</h3>
+
+<table id="hits">
+  <tr>
+  <th>Referer</th>
+  <th>Time</th>
+  </tr>
+  {% if url.stats.hits %}
+  {% for hit in url.stats.hits %}
+  <tr>
+    <td>{{ hit.referer }}</td>
+    <td>{{ hit.created_on }}</td>
+  </tr>
+  {% endfor %}
+  {% endif %}
+</table>
+{% endblock %}

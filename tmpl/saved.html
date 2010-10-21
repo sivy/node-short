@@ -1,0 +1,7 @@
+{% extends "base.html" %}  
+
+{% block content %}
+Short URL for {{url.url}}: <a href="http://localhost/{{url.shorturl}}">http://localhost/{{url.shorturl}}</a>
+
+<a href="/new">Create another</a>
+{% endblock %}
