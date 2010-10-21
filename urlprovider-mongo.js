@@ -1,3 +1,7 @@
+/**
+ * Mongodb database layer for node-short
+ */
+
 var nbs = require('./NewBase60'),
     sys = require('sys');
 
@@ -5,12 +9,16 @@ var Db= require('mongodb/db').Db,
 ObjectID= require('mongodb/bson/bson').ObjectID,
 Server= require('mongodb/connection').Server;
 
+/**
+ * 
+ */
 UrlProvider = function (host, port, database){
     console.log(host, port, database);
     this.db = new Db(database, new Server(host, port, {auto_reconnect: true}, {}));
     this.db.open(function(){});
 };
 
+// utility function
 UrlProvider.prototype.getCollection = function(callback){
     this.db.collection('urls', function(error, urls_collection){
         if( error ) callback(error);

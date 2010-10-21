@@ -1,8 +1,69 @@
 {% extends "base.html" %}
 
+{% block htmlhead %}
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.2.6/jquery.min.js" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" charset="utf-8">
+    // add new content
+
+    var resolved_offset = 0;
+
+    function addresolved(type, msg){
+        /* Simple helper to add a div.
+        type is the name of a CSS class (old/new/error).
+        msg is the contents of the div */
+        $("#resolved").append(
+            "<li class=\'msg "+ type +"\'>"+ msg.url.url +" via " + msg.hit.referer  + "</li>"
+        );
+    }
+    
+    function waitForData(){
+        /* This requests the url /data/resolved/0
+        When it complete (or errors) */
+        $.ajax({
+            type: "GET",
+            url: "/data/resolved/"+resolved_offset,
+
+            async: true, /* If set to non-async, browser shows page as "Loading.."*/
+            cache: false,
+            timeout:50000, /* Timeout in ms */
+
+            success: function(data){ /* called when request completes */
+                data = JSON.parse(data);
+                for (var i=0;i<data.msgs.length;i++) {
+                   var msg=data.msgs[i];
+                   addresolved("new", msg); /* Add response to a .msg div (with the "new" class) */
+                }
+                resolved_offset=data.next_offset;
+                setTimeout(
+                    'waitForData()', /* Request next message */
+                    1000 /* ..after 1 seconds */
+                );
+            },
+            error: function(XMLHttpRequest, textStatus, errorThrown){
+                addmsg("error", textStatus + " (" + errorThrown + ")");
+                setTimeout(
+                    'waitForData()', /* Try again after.. */
+                    15000 /* milliseconds (15seconds) */
+                );
+            },
+        });
+    };
+
+    $(document).ready(function(){
+        waitForData(); /* Start the initial request */
+    });
+    </script>
+{% endblock %}
+
 <h1>{{ title }}</h1>
 
 {% block content %}
+
+<form action="/make" method="POST">
+Shorten: <input type="text" name="url" id="url" /> <input type="submit" name="Save" />
+</form>
+
+<hr>
 
 {%if urls %}
 <ul>
@@ -13,5 +74,9 @@
 {% endfor %}
 </ul>
 {% endif %}
+
+<h3>Recent Clicks</h3>
+<ul id="resolved">
+</ul>
 
 {% endblock %}

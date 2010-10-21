@@ -40,7 +40,11 @@ var settings = require('./settings'),
 
 loader.set_path(settings.template_path);
 
-var urlProvider = new UrlProvider('localhost', 27017, 'nd-urls');
+var urlProvider = new UrlProvider(
+    settings.db.host, 
+    settings.db.port, 
+    settings.db.database
+);
 
 // Routes
 
@@ -180,18 +184,50 @@ app.get('/:shorturl.html', function(req, res){
 });
 
 /**
+ * longpoll handling for dashboard
+ */
+var resolved=[];
+var resolved_deferred=[];
+
+app.get('/data/resolved/:offset?', function(req, res) {
+    var offset = parseInt(req.params.offset);
+    res.contentType('text/plain');
+    if (resolved.length > offset) {
+        res.send(JSON.stringify({ next_offset: offset+1, msgs: resolved.slice(offset) }));
+    } else {
+        resolved_deferred.push( [offset, res] );
+    }
+});
+
+/**
  update stats for the URL
  */
 app_emitter.on('newHit', function(url, hit){
-    var data = { "$push": { "stats.hits": hit }, "$inc": { "stats.hitcounter": 1 } };
     console.log('hit for url: ' + JSON.stringify(url));
+    
+    // for dashboard
+    delete url.stats;
+    var msg = { url: url, hit: hit };
+    resolved.push(msg);
+    console.log('resolved queue' + JSON.stringify(resolved));
+    for( ix in resolved_deferred ){
+        var ofs = resolved_deferred[ix][0];
+        var res = resolved_deferred[ix][1];
+        console.log('sending deferred response (offset: '+ofs+')' + JSON.stringify({ next_offset: ofs+1, msgs: resolved.slice(ofs) }));
+        res.send( JSON.stringify({ next_offset: ofs+1, msgs: resolved.slice(ofs) }) );
+    }
+    
+    // now purge the deferrals
+    console.log('clearing resolved queue');
+    resolved_deferred = []
+
+    // update stats for url
+    var data = { "$push": { "stats.hits": hit }, "$inc": { "stats.hitcounter": 1 } };
     urlProvider.findByShort(url.shorturl, function(error, url){
         urlProvider.update({_id:url._id}, data, function(error, data){
-            console.log('updated url with hit data: ' + JSON.stringify(data));
-            console.log(JSON.stringify(url));
+            console.log('updated url '+ url.shorturl +' with hit data: ' + JSON.stringify(data));
         });
     });
-    
 });
 
 app_emitter.on('newUrl', function(url){
