@@ -114,22 +114,24 @@ app.post('/make', function(req, res){
             handleError(error, res);
         } else {
             var url = urls[0];
+            delete url._id; // safety first!
             app_emitter.emit('newUrl', url);
             app_log.debug('url saved');
             if (format == 'json') {
                 res.contentType('application/json');
                 res.send(JSON.stringify(url));
                 res.end();
-            }
-            loader.load('saved.'+format, function (error, t) {
-                app_log.trace('template loaded');
-                t.render({url:url}, function (error, result) {
-                    app_log.trace('rendering: ' + result);
-                    res.contentType('saved.'+format);
-                    res.send(result);
-                    res.end();
+            } else {
+                loader.load('saved.'+format, function (error, t) {
+                    app_log.trace('template loaded');
+                    t.render({url:url}, function (error, result) {
+                        app_log.trace('rendering: ' + result);
+                        res.contentType('saved.'+format);
+                        res.send(result);
+                        res.end();
+                    });
                 });
-            }); 
+            }
         }
     });
 });
