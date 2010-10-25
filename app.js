@@ -18,8 +18,8 @@ app.configure(function(){
     app.use(express.session());
     app.use(express.methodOverride());
     app.use(express.compiler({ src: __dirname + '/public', enable: ['less'] }));
+    app.use(express.staticProvider(__dirname + '/static'));
     app.use(app.router);
-    app.use(express.staticProvider(__dirname + '/public'));
 });
 
 app.configure('development', function(){
@@ -40,6 +40,33 @@ var settings = require('./settings'),
 
 loader.set_path(settings.template_path);
 
+/*
+ * LOGGING SUPPORT
+ */
+var log4js = require('log4js');
+log4js.addAppender(log4js.consoleAppender(), 'app');
+log4js.addAppender(log4js.consoleAppender(), 'resolved');
+log4js.addAppender(log4js.consoleAppender(), 'defer_queue');
+
+app_log = log4js.getLogger('app');
+app_log.setLevel('TRACE');
+
+resolved_log = log4js.getLogger('resolved');
+resolved_log.setLevel('TRACE');
+
+defer_log = log4js.getLogger('defer_queue');
+defer_log.setLevel('TRACE');
+
+// error handling
+function handleError(error, res) {
+    app_log.error(error.message);
+    app_log.debug(JSON.stringify(error));
+
+    res.contentType('text/plain');
+    res.send(error.message);
+    res.end();
+}
+
 var urlProvider = new UrlProvider(
     settings.db.host, 
     settings.db.port, 
@@ -52,8 +79,8 @@ app.get('/', function(req, res){
     urlProvider.findAll(function(error, urls){
         var ctx = { urls: urls };
         loader.load('index.html', function (error, t) {
-            if (error.message)
-                res.send(error.message)
+            if (error)
+                handleError(error, res);
             else {
                 t.render(ctx, function (error, result) {
                     res.send(result);
@@ -84,23 +111,20 @@ app.post('/make', function(req, res){
     };
     urlProvider.save([u], function(error, urls) {
         if (error) {
-            res.contentType('text/plain');
-            res.send(error.message);
-            res.send(JSON.stringify(error));
-            res.end();
+            handleError(error, res);
         } else {
             var url = urls[0];
             app_emitter.emit('newUrl', url);
-            console.log('saved');
+            app_log.debug('url saved');
             if (format == 'json') {
                 res.contentType('application/json');
                 res.send(JSON.stringify(url));
                 res.end();
             }
             loader.load('saved.'+format, function (error, t) {
-                console.log('template loaded');
+                app_log.trace('template loaded');
                 t.render({url:url}, function (error, result) {
-                    console.log('rendering: ' + result);
+                    app_log.trace('rendering: ' + result);
                     res.contentType('saved.'+format);
                     res.send(result);
                     res.end();
@@ -114,17 +138,13 @@ app.get('/:shorturl', function (req, res){
     var shorturl = req.params.shorturl;
     urlProvider.findByShort(shorturl, function(error, url){
         if (error) {
-            console.log(JSON.stringify(error));
-            res.contentType('text/plain');
-            res.send(error.message);
-            res.send(JSON.stringify(error));
-            res.end();
+            handleError(error, ers);
         } else {
             var hit = { created_on: new Date() };
             if (req.headers.referer) {
                 hit.referer = req.headers.referer;
             }
-            console.log('hit:' + sys.inspect(hit));
+            app_log.info('hit:' + JSON.stringify(hit));
             
             // let the rest of the app know we have a hit!
             app_emitter.emit('newHit', url, hit);
@@ -137,18 +157,14 @@ app.get('/:shorturl', function (req, res){
 
 app.get('/:shorturl.json', function (req, res){
     var shorturl = req.params.shorturl;
-    console.log(sys.inspect(shorturl));
+    app_log.info('data for shorturl: ' + shorturl);
     urlProvider.findByShort(shorturl, function(error, url){        
         if (error) {
-            console.log(JSON.stringify(error));
-            res.contentType('text/plain');
-            res.send(error.message);
-            res.send(JSON.stringify(error));
-            res.end();
+            handleError(error, ers);
         } else {
-            console.log(sys.inspect(url));
+            app_log.debug(JSON.stringify(url));
             
-            res.contentType('text/plain');
+            res.contentType('application/json');
             res.send(JSON.stringify(url));
             res.end();
         }
@@ -159,21 +175,17 @@ app.get('/:shorturl.html', function(req, res){
     var shorturl = req.params.shorturl;
     urlProvider.findByShort(shorturl, function(error, url) {        
         if (error) {
-            console.log(JSON.stringify(error));
-            res.contentType('text/plain');
-            res.send(error.message);
-            res.send(JSON.stringify(error));
-            res.end();
+            handleError(error, ers);
         } else {
-            console.log(sys.inspect(url));
+            app_log.debug(JSON.stringify(url));
             
             loader.load('urlinfo.html', function (error, t) {
-                console.log('template loaded');
+                app_log.trace('template loaded');
                 t.render({url:url}, function (error, result) {
                     if (error) {
                         console.log(JSON.stringify(error));
                     }
-                    console.log('rendering: ' + result);
+                    app_log.trace('rendering: ' + result);
                     res.contentType('text.html');
                     res.send(result);
                     res.end();
@@ -189,13 +201,19 @@ app.get('/:shorturl.html', function(req, res){
 var resolved=[];
 var resolved_deferred=[];
 
-app.get('/data/resolved/:offset?', function(req, res) {
-    var offset = parseInt(req.params.offset);
+app.get('/data/resolved', function(req, res) {
+    app_log.trace('data/resolved @ ' + new Date());
+    defer_log.debug('processing recent clicks');
     res.contentType('text/plain');
-    if (resolved.length > offset) {
-        res.send(JSON.stringify({ next_offset: offset+1, msgs: resolved.slice(offset) }));
+    if (resolved.length) {
+        defer_log.debug('returning ' + resolved.length + ' items');
+        var resp = JSON.stringify({ next_offset: offset+resolved.length, msgs: resolved.slice(offset) });
+        defer_log.trace(resp);
+        res.send(resp);
+        res.end();
     } else {
-        resolved_deferred.push( [offset, res] );
+        defer_log.debug('no pending urls; deferring request');
+        resolved_deferred.push( res );
     }
 });
 
@@ -205,22 +223,7 @@ app.get('/data/resolved/:offset?', function(req, res) {
 app_emitter.on('newHit', function(url, hit){
     console.log('hit for url: ' + JSON.stringify(url));
     
-    // for dashboard
-    delete url.stats;
-    var msg = { url: url, hit: hit };
-    resolved.push(msg);
-    console.log('resolved queue' + JSON.stringify(resolved));
-    for( ix in resolved_deferred ){
-        var ofs = resolved_deferred[ix][0];
-        var res = resolved_deferred[ix][1];
-        console.log('sending deferred response (offset: '+ofs+')' + JSON.stringify({ next_offset: ofs+1, msgs: resolved.slice(ofs) }));
-        res.send( JSON.stringify({ next_offset: ofs+1, msgs: resolved.slice(ofs) }) );
-    }
     
-    // now purge the deferrals
-    console.log('clearing resolved queue');
-    resolved_deferred = []
-
     // update stats for url
     var data = { "$push": { "stats.hits": hit }, "$inc": { "stats.hitcounter": 1 } };
     urlProvider.findByShort(url.shorturl, function(error, url){
@@ -228,6 +231,26 @@ app_emitter.on('newHit', function(url, hit){
             console.log('updated url '+ url.shorturl +' with hit data: ' + JSON.stringify(data));
         });
     });
+
+    // for dashboard
+    delete url.stats;
+    var msg = { url: url, hit: hit };
+    
+    resolved.push(msg);
+    resolved_log.trace('resolved queue' + JSON.stringify(resolved));
+    for( ix in resolved_deferred ){
+        var res = resolved_deferred[ix];
+        defer_log.trace('sending deferred response # '+ix + ' ' + JSON.stringify({ msgs: resolved }));
+        res.send( JSON.stringify({ msgs: resolved }) );
+    }
+    
+    // now purge the deferrals
+    resolved_log.trace('clearing resolved queue');
+    resolved = [];
+    
+    defer_log.trace('clearing defer queue');
+    resolved_deferred = []
+
 });
 
 app_emitter.on('newUrl', function(url){

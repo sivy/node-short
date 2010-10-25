@@ -10,6 +10,7 @@ This is a learning project, but I think that eventually it will be something you
 
 * expressjs (and connect)
 * node-mongodb-native
+* log4js
 
 ## TODO:
 

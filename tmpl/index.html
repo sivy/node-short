@@ -3,56 +3,58 @@
 {% block htmlhead %}
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.2.6/jquery.min.js" type="text/javascript" charset="utf-8"></script>
 <script type="text/javascript" charset="utf-8">
-    // add new content
+/**
+ * "dashboard" widgets scripts for home page
+ */ 
 
-    var resolved_offset = 0;
+// add new content
 
-    function addresolved(type, msg){
-        /* Simple helper to add a div.
-        type is the name of a CSS class (old/new/error).
-        msg is the contents of the div */
-        $("#resolved").append(
-            "<li class=\'msg "+ type +"\'>"+ msg.url.url +" via " + msg.hit.referer  + "</li>"
-        );
-    }
-    
-    function waitForData(){
-        /* This requests the url /data/resolved/0
-        When it complete (or errors) */
-        $.ajax({
-            type: "GET",
-            url: "/data/resolved/"+resolved_offset,
+function addmsg(type, msg){
+    /* Simple helper to add a div.
+    type is the name of a CSS class (old/new/error).
+    msg is the contents of the div */
+    $("#resolved").prepend(
+        "<li class=\'msg "+ type +"\'>"+ msg +"</li>"
+    ).fadeIn(100);
+}
 
-            async: true, /* If set to non-async, browser shows page as "Loading.."*/
-            cache: false,
-            timeout:50000, /* Timeout in ms */
+function waitForData(){
+    /* This requests the url /data/resolved
+    When it complete (or errors) */
+    $.ajax({
+        type: "GET",
+        url: "/data/resolved",
 
-            success: function(data){ /* called when request completes */
-                data = JSON.parse(data);
-                for (var i=0;i<data.msgs.length;i++) {
-                   var msg=data.msgs[i];
-                   addresolved("new", msg); /* Add response to a .msg div (with the "new" class) */
-                }
-                resolved_offset=data.next_offset;
-                setTimeout(
-                    'waitForData()', /* Request next message */
-                    1000 /* ..after 1 seconds */
-                );
-            },
-            error: function(XMLHttpRequest, textStatus, errorThrown){
-                addmsg("error", textStatus + " (" + errorThrown + ")");
-                setTimeout(
-                    'waitForData()', /* Try again after.. */
-                    15000 /* milliseconds (15seconds) */
-                );
-            },
-        });
-    };
+        async: true, /* If set to non-async, browser shows page as "Loading.."*/
+        cache: false,
+        timeout:50000, /* Timeout in ms */
 
-    $(document).ready(function(){
-        waitForData(); /* Start the initial request */
+        success: function(data){ /* called when request completes */
+            data = JSON.parse(data);
+            for (var i=0;i<data.msgs.length;i++) {
+               var msg=data.msgs[i];
+               addmsg("new", msg.url.url); /* Add response to a .msg div (with the "new" class) */
+            }
+            setTimeout(
+                'waitForData()', /* Request next message */
+                1000 /* ..after 1 seconds */
+            );
+        },
+        error: function(XMLHttpRequest, textStatus, errorThrown){
+            console.log("error", textStatus + " (" + errorThrown + ")");
+            setTimeout(
+                'waitForData()', /* Try again after.. */
+                2000 /* milliseconds (2 seconds) */
+            );
+        },
     });
-    </script>
+};
+
+$(document).ready(function(){
+    waitForData(); /* Start the initial request */
+});
+        
+</script>
 {% endblock %}
 
 <h1>{{ title }}</h1>
@@ -75,8 +77,9 @@ Shorten: <input type="text" name="url" id="url" /> <input type="submit" name="Sa
 </ul>
 {% endif %}
 
+<section id="recent">
 <h3>Recent Clicks</h3>
 <ul id="resolved">
 </ul>
-
+</section>
 {% endblock %}
