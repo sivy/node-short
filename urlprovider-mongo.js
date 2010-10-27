@@ -56,6 +56,20 @@ UrlProvider.prototype.findByShort = function(shorturl, callback) {
     });
 };
 
+// reverse lookup for existing
+UrlProvider.prototype.findByUrl = function(url, callback) {
+    this.getCollection(function(error, urls_collection) {
+        if( error ) {
+            callback(error)
+        } else {
+            urls_collection.findOne({url: url}, {}, function(error, result) {
+                if( error ) callback(error)
+                else callback(null, result)
+            });
+        }
+    });
+};
+
 UrlProvider.prototype.save = function(urls, callback) {
     this.getCollection(function(error, urls_collection) {
         if( error ) {
