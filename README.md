@@ -19,7 +19,7 @@ This is a learning project, but I think that eventually it will be something you
 
 ## TODO:
 
-* formalize the API
+* formalize the [API](http://github.com/sivy/node-short/wiki/API)
 * refactor some parts of the app
 * collect more interesting stats
 * google charts for stats
