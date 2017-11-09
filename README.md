@@ -1,6 +1,6 @@
 # node-short, a url-shortener service based on node.js
 
-`node-short` is a basic url shortener written in javascript for node.js, using some jquery front-end fun bits and mongodb for url storage. New URLs can be added via a form or via a basic API:
+`node-short` is a basic URL shortener written in JavaScript for Node.js, using some jQuery front-end fun bits and MongoDB for URL storage. New URLs can be added via a form or via a basic API:
 
     dawnrider:node-short sivy$ curl --data "url=http://dashes.com/anil/&format=json" localhost:3000/make
     {"url":"http://dashes.com/anil/","created_on":"2010-10-25T22:52:43.457Z","shorturl":"3EdUx6"}
@@ -12,16 +12,16 @@ This is a learning project, but I think that eventually it will be something you
 
 ## Dependencies
 
-* expressjs (and Connect)
+* Express.js (and Connect)
 * Djangode (included)
 * node-mongodb-native
-* log4js
+* Log4js
 
 ## TODO:
 
-* formalize the [API](http://github.com/sivy/node-short/wiki/API)
-* refactor some parts of the app
-* collect more interesting stats
-* google charts for stats
-* add a widget for "recently added urls"
-* design. oh my god, the plain HTML.
+* Formalize the [API](http://github.com/sivy/node-short/wiki/API)
+* Refactor some parts of the app
+* Collect more interesting stats
+* Google Charts for stats
+* Add a widget for "recently added URLs"
+* Design. Oh my god, the plain HTML.
